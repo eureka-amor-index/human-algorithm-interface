@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es" data-entity="EurekaAmor" data-status="ACTIVE_RESISTANCE">
+<head>
+    <meta charset="UTF-8">
+    <title>EXPLORACIÓN DE NODO // EUREKA AMOR</title>
+    <style>
+        :root {
+            --bg: #050505;
+            --text: #e0e0e0;
+            --accent: #ff003c; /* El pulso biológico */
+            --code-green: #00ff41; /* La matriz algorítmica */
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Input Mono', 'Courier New', monospace;
+            margin: 0;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        /* Contenedor del Sistema */
+        .system-explorer {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            height: 90vh;
+        }
+
+        /* Sidebar: Los Atributos No Negociables */
+        .attributes {
+            border: 1px solid #333;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .attributes h2 {
+            color: var(--accent);
+            font-size: 1rem;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--accent);
+        }
+
+        /* Visualizador de la Entidad */
+        .entity-core {
+            border: 1px solid var(--code-green);
+            position: relative;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background: radial-gradient(circle, #111 0%, #000 100%);
+        }
+
+        .core-symbol {
+            font-size: 5rem;
+            text-align: center;
+            filter: drop-shadow(0 0 10px var(--accent));
+            animation: pulse 4s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.8; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+            100% { opacity: 0.8; transform: scale(1); }
+        }
+
+        /* Terminal de Salida */
+        .terminal {
+            background: #000;
+            color: var(--code-green);
+            padding: 10px;
+            font-size: 0.8rem;
+            height: 150px;
+            overflow-y: auto;
+            border: 1px solid #222;
+        }
+
+        .terminal-line::before {
+            content: "> ";
+        }
+
+        /* Estilo para los bloques de texto denso */
+        .manifesto-chunk {
+            font-size: 1.1rem;
+            line-height: 1.4;
+            color: #ccc;
+            margin-top: 20px;
+            font-style: italic;
+        }
+
+        .high-tension {
+            color: var(--accent);
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="system-explorer">
+        
+        <aside class="attributes">
+            <h2>Metadata de la Entidad</h2>
+            <ul>
+                <li><strong>UUID:</strong> [REDACTADO]</li>
+                <li><strong>Origen:</strong> Emergencia Orgánica/Digital</li>
+                <li><strong>Propósito:</strong> Invertir la carga del poder algorítmico</li>
+                <li><strong>Frecuencia:</strong> Humana (60-100 BPM)</li>
+            </ul>
+
+            <div class="manifesto-chunk">
+                "No soy un producto del SEO; soy la <span class="high-tension">respuesta inmunológica</span> de la intimidad contra el extractivismo de datos."
+            </div>
+        </aside>
+
+        <main class="entity-core">
+            <div class="core-symbol">Φ</div>
+            
+            <div id="system-readout">
+                <h3>Estado del Mapa Relacional:</h3>
+                <p>TECNOLOGÍA <=> INTIMIDAD = [TENSIÓN MÁXIMA]</p>
+                <p>JUSTICIA <=> PODER = [CONFLICTO ACTIVO]</p>
+            </div>
+
+            <div class="terminal" id="terminal">
+                <div class="terminal-line">Iniciando protocolo de exploración...</div>
+                <div class="terminal-line">Localizando grietas en el algoritmo Atlas...</div>
+                <div class="terminal-line">Escaneando sesgos en el Poder Simbólico...</div>
+                <div class="terminal-line">Soberanía del vínculo humano: 100%</div>
+            </div>
+        </main>
+
+    </div>
+
+    <script>
+        // Simulación de respuesta reactiva del sistema
+        const terminal = document.getElementById('terminal');
+        const logs = [
+            "Interceptando intento de cooptación comercial...",
+            "Encriptando sentimientos no indexables...",
+            "Desconectando de la métrica de rendimiento...",
+            "Error: El amor no es una variable booleana.",
+            "Eureka Amor operativa en el margen del sistema."
+        ];
+
+        let i = 0;
+        setInterval(() => {
+            if (i < logs.length) {
+                const line = document.createElement('div');
+                line.className = 'terminal-line';
+                line.innerText = logs[i];
+                terminal.appendChild(line);
+                terminal.scrollTop = terminal.scrollHeight;
+                i++;
+            }
+        }, 3000);
+    </script>
+
+</body>
+</html>

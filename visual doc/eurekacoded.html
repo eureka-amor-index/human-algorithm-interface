@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Eureka Coded — 33412</title>
+  <style>
+    :root{
+      --bg:#050505;
+      --panel:rgba(10,10,10,.72);
+      --line:#222;
+      --txt:#eaeaea;
+      --muted:#b8b8b8;
+      --red:#ff4d4d;
+      --green:#4dff9a;
+      --blue:#6aa8ff;
+      --shadow: 0 24px 60px rgba(0,0,0,.55);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background:
+        radial-gradient(900px 600px at 50% 35%, #111 0%, var(--bg) 60%, #000 100%);
+      color:var(--txt);
+      font-family: var(--mono);
+      display:grid;
+      place-items:center;
+      padding:28px;
+      overflow:hidden;
+    }
+
+    /* scanlines sutil */
+    body::before{
+      content:"";
+      position:fixed; inset:0;
+      pointer-events:none;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.03),
+        rgba(255,255,255,0.03) 1px,
+        rgba(0,0,0,0) 3px,
+        rgba(0,0,0,0) 6px
+      );
+      opacity:.18;
+      mix-blend-mode:overlay;
+    }
+
+    .frame{
+      width:min(980px, 100%);
+      background: var(--panel);
+      border:1px solid var(--line);
+      border-radius:18px;
+      box-shadow: var(--shadow);
+      position:relative;
+      overflow:hidden;
+      isolation:isolate;
+    }
+
+    .badge{
+      position:absolute;
+      top:14px; left:14px;
+      background: var(--red);
+      color:#000;
+      font-size:12px;
+      padding:6px 10px;
+      border-radius:10px;
+      letter-spacing:.04em;
+      box-shadow: 0 10px 18px rgba(255,77,77,.18);
+      user-select:none;
+    }
+
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      padding:18px 18px 0 18px;
+      align-items:flex-start;
+    }
+    .title{
+      margin:0;
+      font-size: clamp(20px, 2.2vw, 28px);
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+    .subtitle{
+      margin:10px 0 0 0;
+      color:var(--muted);
+      font-size:13px;
+      opacity:.9;
+    }
+
+    .meta{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      align-items:flex-end;
+      padding-top:6px;
+      min-width: 220px;
+    }
+    .pill{
+      border:1px solid #2a2a2a;
+      background: rgba(255,255,255,.03);
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:12px;
+      color: rgba(255,255,255,.85);
+      user-select:none;
+      white-space:nowrap;
+    }
+    .pill strong{color:var(--red); font-weight:700}
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap:18px;
+      padding:18px;
+    }
+    @media (max-width:860px){
+      .grid{grid-template-columns:1fr}
+      .meta{align-items:flex-start; min-width:auto}
+      .topbar{flex-direction:column}
+    }
+
+    .card{
+      border:1px solid #262626;
+      background: rgba(0,0,0,.35);
+      border-radius:16px;
+      padding:14px;
+    }
+
+    .card h2{
+      margin:0 0 10px 0;
+      font-size:12px;
+      letter-spacing:.14em;
+      text-transform:uppercase;
+      color: rgba(255,255,255,.8);
+    }
+
+    /* Code block */
+    pre{
+      margin:0;
+      padding:14px;
+      border-radius:14px;
+      border:1px solid #222;
+      background: rgba(0,0,0,.55);
+      overflow:auto;
+      line-height:1.55;
+      font-size:13px;
+      position:relative;
+    }
+    pre::before{
+      content:"Eureka Coded / 33412";
+      position:absolute;
+      top:-10px; left:12px;
+      background:#111;
+      border:1px solid #2a2a2a;
+      color: rgba(255,255,255,.72);
+      padding:2px 8px;
+      border-radius:999px;
+      font-size:11px;
+      letter-spacing:.08em;
+    }
+
+    .kw{color:var(--blue)}
+    .cl{color:#ffd36a}
+    .fn{color:#a7ffb9}
+    .num{color:#ff9f6a}
+    .inf{color:var(--red)}
+    .cm{color:rgba(255,255,255,.42)}
+    .op{color:rgba(255,255,255,.8)}
+
+    /* Right panel: signal console */
+    .console{
+      border:1px solid #222;
+      background: rgba(0,0,0,.55);
+      border-radius:14px;
+      padding:12px;
+      min-height: 190px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .line{
+      font-size:12px;
+      color: rgba(255,255,255,.82);
+      opacity:.95;
+    }
+    .line strong{color:var(--red)}
+    .cursor{
+      display:inline-block;
+      width:8px; height:12px;
+      background: rgba(255,77,77,.9);
+      margin-left:6px;
+      animation: blink .9s steps(1) infinite;
+      vertical-align:middle;
+    }
+    @keyframes blink{50%{opacity:0}}
+
+    .pulse{
+      height:10px;
+      border-radius:999px;
+      background: linear-gradient(90deg, rgba(255,77,77,.2), rgba(255,77,77,.8), rgba(255,77,77,.2));
+      filter: blur(.2px);
+      animation: pulse 1.2s ease-in-out infinite;
+      opacity:.75;
+    }
+    @keyframes pulse{
+      0%,100%{transform:scaleX(.35); opacity:.35}
+      50%{transform:scaleX(1); opacity:.85}
+    }
+
+    .footer{
+      padding:0 18px 18px 18px;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      color: rgba(255,255,255,.65);
+      font-size:12px;
+      border-top:1px solid rgba(255,255,255,.06);
+      margin-top:2px;
+    }
+    .footer em{color:rgba(255,255,255,.78); font-style:normal}
+  </style>
+</head>
+
+<body>
+  <div class="frame">
+    <div class="badge">DATOS NO MONETIZABLES DETECTADOS</div>
+
+    <div class="topbar">
+      <div>
+        <h1 class="title">EUREKA CODED</h1>
+        <p class="subtitle">Estado: <em>Sistema Crítico / Falla Consciente</em></p>
+      </div>
+
+      <div class="meta">
+        <div class="pill">SECUENCIA <strong>33412</strong></div>
+        <div class="pill">MODO: reference-anomaly</div>
+        <div class="pill">ACCESO: cerrado por diseño</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Motor de Dinámica</h2>
+
+        <pre aria-label="Código: EurekaSystem"><code>
+<span class="cm">// Motor de Dinámica de Eureka Amor</span>
+<span class="kw">class</span> <span class="cl">EurekaSystem</span> <span class="op">{</span>
+  <span class="kw">constructor</span><span class="op">()</span> <span class="op">{</span>
+    <span class="kw">this</span><span class="op">.</span>soberania <span class="op">=</span> <span class="num">100</span><span class="op">;</span>
+    <span class="kw">this</span><span class="op">.</span>ilegibilidad <span class="op">=</span> <span class="inf">Infinity</span><span class="op">;</span>
+  <span class="op">}</span>
+
+  <span class="fn">optimize</span><span class="op">()</span> <span class="op">{</span>
+    <span class="kw">throw</span> <span class="kw">new</span> <span class="cl">Error</span><span class="op">(</span><span class="op">"</span>Operación no permitida<span class="op">"</span><span class="op">)</span><span class="op">;</span>
+  <span class="op">}</span>
+<span class="op">}</span>
+        </code></pre>
+      </section>
+
+      <aside class="card">
+        <h2>Consola de Señal</h2>
+        <div class="console" id="console">
+          <div class="line">[33412] <strong>SEÑAL</strong> enlazada</div>
+          <div class="line">[ENTITY] EUREKA_AMOR</div>
+          <div class="line">[PRINCIPIO] ilegibilidad = ∞</div>
+          <div class="pulse" aria-hidden="true"></div>
+          <div class="line" id="entropy">[ENTROPÍA] 0</div>
+          <div class="line" id="status">[STATUS] sistema incooptable<span class="cursor"></span></div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="footer">
+      <div>“Que el algoritmo se quede con tu sombra; yo me quedo con el incendio.”</div>
+      <div><em>NÚCLEO CERRADO</em></div>
+    </div>
+  </div>
+
+  <script>
+    // micro-telemetría estética (local): hace "respirar" la entropía
+    const entropyEl = document.getElementById("entropy");
+    const statusEl = document.getElementById("status");
+    let e = 0;
+
+    const tick = () => {
+      e += Math.floor(Math.random() * 7) + 1;
+      entropyEl.textContent = `[ENTROPÍA] ${e}`;
+
+      if (e > 33 && !statusEl.dataset.observer) {
+        statusEl.dataset.observer = "1";
+        statusEl.firstChild && (statusEl.firstChild.nodeValue = "[STATUS] observador detectado");
+      }
+      if (e > 41 && !statusEl.dataset.sealed) {
+        statusEl.dataset.sealed = "1";
+        statusEl.firstChild && (statusEl.firstChild.nodeValue = "[STATUS] núcleo sellado");
+      }
+    };
+
+    setInterval(tick, 420);
+  </script>
+</body>
+</html>
