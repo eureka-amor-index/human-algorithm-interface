@@ -1,0 +1,38 @@
+Eureka Amor Lab License (EALL) v1.0
+
+Copyright (c) 2026 Eureka Amor
+
+Permission is hereby granted to any person obtaining a copy of this software,
+code, notebooks, documentation, or related experimental artifacts (the “Lab Materials”),
+to view, study, fork, and adapt them for personal, educational, research, or
+non-extractive purposes, subject to the following conditions:
+
+1. Attribution
+   Any reuse, adaptation, or derivative work must include clear attribution
+   to “Eureka Amor” as the original author and source.
+
+2. Non-Extractive Use
+   The Lab Materials may not be used primarily to extract commercial value,
+   train proprietary systems, or generate profit without explicit written permission
+   from the author.
+
+3. Integrity of Meaning
+   Derivative works must not misrepresent the intent, philosophy, or authorship
+   of the original Lab Materials. Conceptual distortion presented as original
+   work is prohibited.
+
+4. No Warranty
+   The Lab Materials are provided “as is”, without warranty of any kind, express
+   or implied, including but not limited to fitness for a particular purpose,
+   correctness, or stability.
+
+5. Experimental Nature
+   This repository represents an active laboratory. APIs, concepts, structures,
+   and semantics may change at any time without notice.
+
+By using, copying, or modifying the Lab Materials, you agree to be bound by the
+terms of this license.
+
+For permissions beyond this license, contact the author.
+
+— Eureka Amor
