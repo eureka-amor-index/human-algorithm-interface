@@ -10,9 +10,10 @@ As interpretive systems.
 ## Scope
 
 This repository focuses on:
-- How algorithms perceive, classify, and act on information
-- How humans adapt, signal, and behave within algorithmic environments
-- The interface layer where infrastructure becomes experience
+
+* How algorithms perceive, classify, and act on information
+* How humans adapt, signal, and behave within algorithmic environments
+* The interface layer where infrastructure becomes experience
 
 ## Orientation
 
@@ -25,3 +26,4 @@ Interpretation is a functional layer.
 
 Active research repository.  
 Notes, models, and observations will evolve over time.
+
