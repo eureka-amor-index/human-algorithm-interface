@@ -49,7 +49,7 @@ export default async function handler(req, res) {
 
     // HuggingFace feature-extraction endpoint
     const r = await fetch(
-      "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2",
+https://router.huggingface.co/hf-inference/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2
       {
         method: "POST",
         headers: {
@@ -90,3 +90,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Server error", detail: String(e) });
   }
 }
+
