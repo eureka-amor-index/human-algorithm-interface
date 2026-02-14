@@ -1,8 +1,12 @@
+// api/embed_nodes.js (HuggingFace embeddings - free tier)
+
 function toVector1D(x) {
   if (!Array.isArray(x) || x.length === 0) return null;
 
+  // 1D
   if (typeof x[0] === "number") return x;
 
+  // 2D tokens -> promedio
   if (Array.isArray(x[0])) {
     const tokens = x;
     const dims = tokens[0].length;
@@ -41,16 +45,20 @@ export default async function handler(req, res) {
 
     const inputs = nodes.map(n => `${n.name} | ${n.tag || ""} | ${(n.tags || []).join(" ")}`);
 
-    const HF_URL = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2";
+    // OBLIGATORIO: pipeline/feature-extraction (embeddings)
+    const HF_URL =
+      "https://router.huggingface.co/hf-inference/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2";
 
-    // Batch: HF suele devolver [item1, item2, ...]
     const r = await fetch(HF_URL, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${HF_API_KEY}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ inputs })
+      body: JSON.stringify({
+        inputs, // batch de strings
+        options: { wait_for_model: true }
+      })
     });
 
     if (!r.ok) {
@@ -60,6 +68,7 @@ export default async function handler(req, res) {
 
     const raw = await r.json();
 
+    // raw debería ser: [item1, item2, ...] (cada item 1D o 2D)
     if (!Array.isArray(raw) || raw.length !== inputs.length) {
       return res.status(500).json({ error: "Unexpected HF response shape", raw });
     }
@@ -75,7 +84,6 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({ nodes: out, dims });
-
   } catch (e) {
     return res.status(500).json({ error: "Server error", detail: String(e) });
   }
