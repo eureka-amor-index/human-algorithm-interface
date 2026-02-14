@@ -11,17 +11,11 @@ function cosine(a, b) {
   return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-9);
 }
 
-// HF puede devolver:
-// - 1D: [d]
-// - 2D por tokens: [[d],[d]...]
-// - o para batch: [ [..], [..], ... ]  (cada item puede ser 1D o 2D)
 function toVector1D(x) {
   if (!Array.isArray(x) || x.length === 0) return null;
 
-  // 1D
   if (typeof x[0] === "number") return x;
 
-  // 2D tokens -> promedio
   if (Array.isArray(x[0])) {
     const tokens = x;
     const dims = tokens[0].length;
@@ -80,9 +74,7 @@ function extractEntities(query) {
   const ents = [];
   const q = query.trim();
 
-  if (/eureka\s+amor/i.test(q)) {
-    ents.push({ name: "Eureka Amor", type: "PERSON", confidence: 0.85 });
-  }
+  if (/eureka\s+amor/i.test(q)) ents.push({ name: "Eureka Amor", type: "PERSON", confidence: 0.85 });
 
   const placeMatch = q.match(/\b(argentina|buenos aires|cathedral city|palm springs)\b/i);
   if (placeMatch) ents.push({ name: placeMatch[0], type: "PLACE", confidence: 0.75 });
@@ -115,8 +107,8 @@ export default async function handler(req, res) {
     const HF_API_KEY = process.env.HF_API_KEY;
     if (!HF_API_KEY) return res.status(500).json({ error: "Missing HF_API_KEY (HuggingFace token)" });
 
-    // Endpoint recomendado (más estable que /pipeline/)
-    const HF_URL = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2";
+    const HF_URL =
+      "https://router.huggingface.co/hf-inference/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2";
 
     const embResp = await fetch(HF_URL, {
       method: "POST",
@@ -124,7 +116,10 @@ export default async function handler(req, res) {
         "Authorization": `Bearer ${HF_API_KEY}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ inputs: query })
+      body: JSON.stringify({
+        inputs: query,
+        options: { wait_for_model: true }
+      })
     });
 
     if (!embResp.ok) {
@@ -133,8 +128,6 @@ export default async function handler(req, res) {
     }
 
     const raw = await embResp.json();
-
-    // raw puede ser 1D o 2D; lo normalizamos
     const qVec = toVector1D(raw);
     if (!qVec) return res.status(500).json({ error: "Could not parse HF embedding response", raw });
 
@@ -147,11 +140,7 @@ export default async function handler(req, res) {
     else if (intents.commercial > 0.35) cluster = "comparison";
     else if (intents.informational > 0.35) cluster = "education";
 
-    const next_queries = [
-      `${query} examples`,
-      `${query} best practices`,
-      `${query} checklist`
-    ];
+    const next_queries = [`${query} examples`, `${query} best practices`, `${query} checklist`];
 
     let target = null;
     if (Array.isArray(nodes) && nodes.length && Array.isArray(nodes[0]?.vec)) {
@@ -170,11 +159,10 @@ export default async function handler(req, res) {
       entities,
       cluster,
       next_queries,
-      explanation: "Embedding-based targeting with deterministic intent heuristics (no random).",
+      explanation: "HF feature-extraction embeddings + deterministic intent heuristics (no random).",
       target,
-      embedding_meta: { provider: "huggingface", model: "sentence-transformers/all-MiniLM-L6-v2", dims: qVec.length }
+      embedding_meta: { provider: "huggingface", model: "all-MiniLM-L6-v2", dims: qVec.length }
     });
-
   } catch (e) {
     return res.status(500).json({ error: "Server error", detail: String(e) });
   }
