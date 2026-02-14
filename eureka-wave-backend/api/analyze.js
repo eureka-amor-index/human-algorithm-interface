@@ -11,18 +11,17 @@ function cosine(a, b) {
   return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-9);
 }
 
-// HuggingFace feature-extraction devuelve a veces:
-// - vector 1D: [d]
-// - o 2D por tokens: [[d],[d]...]
-// Esta función lo deja como 1D promediando si hace falta.
+// HF puede devolver:
+// - 1D: [d]
+// - 2D por tokens: [[d],[d]...]
+// - o para batch: [ [..], [..], ... ]  (cada item puede ser 1D o 2D)
 function toVector1D(x) {
-  if (!Array.isArray(x)) return null;
-  if (x.length === 0) return null;
+  if (!Array.isArray(x) || x.length === 0) return null;
 
   // 1D
   if (typeof x[0] === "number") return x;
 
-  // 2D token embeddings -> promedio por dimensión
+  // 2D tokens -> promedio
   if (Array.isArray(x[0])) {
     const tokens = x;
     const dims = tokens[0].length;
@@ -47,7 +46,6 @@ function normalizeIntentScores(scores) {
   let sum = 0;
   for (const k of keys) sum += scores[k];
   if (sum <= 0) {
-    // fallback
     const uni = 1 / keys.length;
     const out = {};
     for (const k of keys) out[k] = uni;
@@ -58,7 +56,6 @@ function normalizeIntentScores(scores) {
   return out;
 }
 
-// Heurística simple, no random:
 function inferIntent(query) {
   const q = query.toLowerCase();
 
@@ -70,7 +67,6 @@ function inferIntent(query) {
     local: 0.1
   };
 
-  // informational triggers
   if (/\b(what|how|why|guide|tutorial|meaning|definition|examples)\b/.test(q)) scores.informational += 0.8;
   if (/\b(best|top|vs|compare|review)\b/.test(q)) scores.commercial += 0.6;
   if (/\b(buy|price|coupon|deal|order|subscribe|quote|book)\b/.test(q)) scores.transactional += 0.8;
@@ -80,30 +76,23 @@ function inferIntent(query) {
   return normalizeIntentScores(scores);
 }
 
-// Entities súper básico (solo para que haya “telemetría”):
 function extractEntities(query) {
   const ents = [];
   const q = query.trim();
 
-  // Si menciona “eureka amor”
   if (/eureka\s+amor/i.test(q)) {
     ents.push({ name: "Eureka Amor", type: "PERSON", confidence: 0.85 });
   }
 
-  // lugares simples
-  if (/\b(argentina|buenos aires|cathedral city|palm springs)\b/i.test(q)) {
-    const m = q.match(/\b(argentina|buenos aires|cathedral city|palm springs)\b/i);
-    ents.push({ name: m[0], type: "PLACE", confidence: 0.75 });
-  }
+  const placeMatch = q.match(/\b(argentina|buenos aires|cathedral city|palm springs)\b/i);
+  if (placeMatch) ents.push({ name: placeMatch[0], type: "PLACE", confidence: 0.75 });
 
-  // conceptos técnicos detectables
-  const concepts = ["seo", "sx o", "sxo", "quantum", "qubit", "encryption", "entity", "knowledge graph"];
+  const concepts = ["seo", "sxo", "quantum", "qubit", "encryption", "entity", "knowledge graph"];
   for (const c of concepts) {
     const re = new RegExp(`\\b${c.replace(" ", "\\s+")}\\b`, "i");
     if (re.test(q)) ents.push({ name: c.toUpperCase(), type: "CONCEPT", confidence: 0.7 });
   }
 
-  // dedupe por name
   const seen = new Set();
   return ents.filter(e => {
     const k = e.name.toLowerCase();
@@ -115,7 +104,6 @@ function extractEntities(query) {
 
 export default async function handler(req, res) {
   try {
-    // CORS para CodePen
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     if (req.method === "OPTIONS") return res.status(200).end();
@@ -124,22 +112,20 @@ export default async function handler(req, res) {
     const { query, nodes } = req.body || {};
     if (!query) return res.status(400).json({ error: "Missing query" });
 
-    // HuggingFace token (gratis)
     const HF_API_KEY = process.env.HF_API_KEY;
     if (!HF_API_KEY) return res.status(500).json({ error: "Missing HF_API_KEY (HuggingFace token)" });
 
-    // 1) Embedding real con HuggingFace
-    const embResp = await fetch(
-https://router.huggingface.co/hf-inference/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${HF_API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ inputs: query })
-      }
-    );
+    // Endpoint recomendado (más estable que /pipeline/)
+    const HF_URL = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2";
+
+    const embResp = await fetch(HF_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${HF_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ inputs: query })
+    });
 
     if (!embResp.ok) {
       const t = await embResp.text();
@@ -147,14 +133,14 @@ https://router.huggingface.co/hf-inference/pipeline/feature-extraction/sentence-
     }
 
     const raw = await embResp.json();
+
+    // raw puede ser 1D o 2D; lo normalizamos
     const qVec = toVector1D(raw);
     if (!qVec) return res.status(500).json({ error: "Could not parse HF embedding response", raw });
 
-    // 2) Intent + entities (heurístico, estable)
     const intents = inferIntent(query);
     const entities = extractEntities(query);
 
-    // cluster label simple (para UI)
     let cluster = "general";
     if (intents.local > 0.35) cluster = "local-seo";
     else if (intents.transactional > 0.35) cluster = "conversion";
@@ -167,7 +153,6 @@ https://router.huggingface.co/hf-inference/pipeline/feature-extraction/sentence-
       `${query} checklist`
     ];
 
-    // 3) Target node por cosine similarity si nos pasan nodes con vec
     let target = null;
     if (Array.isArray(nodes) && nodes.length && Array.isArray(nodes[0]?.vec)) {
       let best = -Infinity;
@@ -187,11 +172,10 @@ https://router.huggingface.co/hf-inference/pipeline/feature-extraction/sentence-
       next_queries,
       explanation: "Embedding-based targeting with deterministic intent heuristics (no random).",
       target,
-      embedding_meta: { provider: "huggingface", model: "all-MiniLM-L6-v2", dims: qVec.length }
+      embedding_meta: { provider: "huggingface", model: "sentence-transformers/all-MiniLM-L6-v2", dims: qVec.length }
     });
 
   } catch (e) {
     return res.status(500).json({ error: "Server error", detail: String(e) });
   }
 }
-
