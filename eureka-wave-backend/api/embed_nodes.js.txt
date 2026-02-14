@@ -1,0 +1,40 @@
+export default async function handler(req, res) {
+  try {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    if (req.method === "OPTIONS") return res.status(200).end();
+    if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
+
+    const { nodes } = req.body || {};
+    if (!Array.isArray(nodes) || !nodes.length) return res.status(400).json({ error: "Missing nodes" });
+
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    if (!OPENAI_API_KEY) return res.status(500).json({ error: "Missing OPENAI_API_KEY" });
+
+    const inputs = nodes.map(n => `${n.name} | ${n.tag || ""} | ${(n.tags || []).join(" ")}`);
+
+    const r = await fetch("https://api.openai.com/v1/embeddings", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "text-embedding-3-small",
+        input: inputs
+      })
+    });
+
+    if (!r.ok) {
+      const t = await r.text();
+      return res.status(502).json({ error: "Embeddings upstream error", detail: t });
+    }
+
+    const j = await r.json();
+    const out = nodes.map((n, i) => ({ ...n, vec: j.data[i].embedding }));
+    return res.status(200).json({ nodes: out, dims: out[0].vec.length });
+
+  } catch (e) {
+    return res.status(500).json({ error: "Server error", detail: String(e) });
+  }
+}
