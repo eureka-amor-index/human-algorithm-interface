@@ -11,15 +11,24 @@ function cosine(a, b) {
   return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-9);
 }
 
+// HF feature-extraction puede devolver:
+// - vector 1D: [d]
+// - o 2D por tokens: [[d],[d]...]
+// - o incluso 3D en algunos casos: [[[d]...]] (batch/token/dim)
+// Esta función lo normaliza a 1D promediando tokens (y batch si hace falta).
 function toVector1D(x) {
   if (!Array.isArray(x) || x.length === 0) return null;
+
+  // 1D
   if (typeof x[0] === "number") return x;
 
-  if (Array.isArray(x[0])) {
+  // 2D tokens -> promedio
+  if (Array.isArray(x[0]) && typeof x[0][0] === "number") {
     const tokens = x;
     const dims = tokens[0].length;
     const out = new Array(dims).fill(0);
     let count = 0;
+
     for (const t of tokens) {
       if (!Array.isArray(t) || t.length !== dims) continue;
       for (let i = 0; i < dims; i++) out[i] += t[i] || 0;
@@ -29,6 +38,12 @@ function toVector1D(x) {
     for (let i = 0; i < dims; i++) out[i] /= count;
     return out;
   }
+
+  // 3D (batch -> tokens -> dims): usamos el primer elemento del batch
+  if (Array.isArray(x[0]) && Array.isArray(x[0][0])) {
+    return toVector1D(x[0]);
+  }
+
   return null;
 }
 
@@ -49,6 +64,7 @@ function normalizeIntentScores(scores) {
 
 function inferIntent(query) {
   const q = query.toLowerCase();
+
   const scores = {
     informational: 0.2,
     navigational: 0.1,
@@ -56,11 +72,13 @@ function inferIntent(query) {
     transactional: 0.2,
     local: 0.1
   };
+
   if (/\b(what|how|why|guide|tutorial|meaning|definition|examples)\b/.test(q)) scores.informational += 0.8;
   if (/\b(best|top|vs|compare|review)\b/.test(q)) scores.commercial += 0.6;
   if (/\b(buy|price|coupon|deal|order|subscribe|quote|book)\b/.test(q)) scores.transactional += 0.8;
   if (/\b(near me|nearby|hours|open now|directions|map)\b/.test(q)) scores.local += 0.9;
   if (/\b(login|site:|homepage|official|contact)\b/.test(q)) scores.navigational += 0.8;
+
   return normalizeIntentScores(scores);
 }
 
@@ -68,12 +86,16 @@ function extractEntities(query) {
   const ents = [];
   const q = query.trim();
 
-  if (/eureka\s+amor/i.test(q)) ents.push({ name: "Eureka Amor", type: "PERSON", confidence: 0.85 });
+  if (/eureka\s+amor/i.test(q)) {
+    ents.push({ name: "Eureka Amor", type: "PERSON", confidence: 0.85 });
+  }
 
-  const placeMatch = q.match(/\b(argentina|buenos aires|cathedral city|palm springs)\b/i);
-  if (placeMatch) ents.push({ name: placeMatch[0], type: "PLACE", confidence: 0.75 });
+  if (/\b(argentina|buenos aires|cathedral city|palm springs)\b/i.test(q)) {
+    const m = q.match(/\b(argentina|buenos aires|cathedral city|palm springs)\b/i);
+    ents.push({ name: m[0], type: "PLACE", confidence: 0.75 });
+  }
 
-  const concepts = ["seo", "sxo", "quantum", "qubit", "encryption", "entity", "knowledge graph"];
+  const concepts = ["seo", "sxo", "quantum", "qubit", "encryption", "entity", "knowledge graph", "ai"];
   for (const c of concepts) {
     const re = new RegExp(`\\b${c.replace(" ", "\\s+")}\\b`, "i");
     if (re.test(q)) ents.push({ name: c.toUpperCase(), type: "CONCEPT", confidence: 0.7 });
@@ -102,18 +124,16 @@ export default async function handler(req, res) {
     if (!HF_API_KEY) return res.status(500).json({ error: "Missing HF_API_KEY (HuggingFace token)" });
 
     const MODEL = "sentence-transformers/all-MiniLM-L6-v2";
-    const HF_URL = `https://api-inference.huggingface.co/pipeline/feature-extraction/${MODEL}`;
+    const HF_URL = `https://router.huggingface.co/hf-inference/models/${MODEL}/pipeline/feature-extraction`;
 
+    // 1) Embedding real con HF router
     const embResp = await fetch(HF_URL, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${HF_API_KEY}`,
+        Authorization: `Bearer ${HF_API_KEY}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        inputs: query,
-        options: { wait_for_model: true }
-      })
+      body: JSON.stringify({ inputs: query })
     });
 
     if (!embResp.ok) {
@@ -125,6 +145,7 @@ export default async function handler(req, res) {
     const qVec = toVector1D(raw);
     if (!qVec) return res.status(500).json({ error: "Could not parse HF embedding response", raw });
 
+    // 2) Intent + entities (determinístico)
     const intents = inferIntent(query);
     const entities = extractEntities(query);
 
@@ -136,6 +157,7 @@ export default async function handler(req, res) {
 
     const next_queries = [`${query} examples`, `${query} best practices`, `${query} checklist`];
 
+    // 3) Target node por cosine similarity si vienen nodes con vec
     let target = null;
     if (Array.isArray(nodes) && nodes.length && Array.isArray(nodes[0]?.vec)) {
       let best = -Infinity;
@@ -153,9 +175,9 @@ export default async function handler(req, res) {
       entities,
       cluster,
       next_queries,
-      explanation: "HF feature-extraction embeddings + deterministic intent heuristics.",
+      explanation: "HF embedding + deterministic intent heuristics (NASA-mode: reproducible, no random).",
       target,
-      embedding_meta: { provider: "huggingface", model: "all-MiniLM-L6-v2", dims: qVec.length }
+      embedding_meta: { provider: "huggingface-router", model: MODEL, dims: qVec.length }
     });
   } catch (e) {
     return res.status(500).json({ error: "Server error", detail: String(e) });
