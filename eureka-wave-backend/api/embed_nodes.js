@@ -1,13 +1,8 @@
-// api/embed_nodes.js  (HuggingFace embeddings - free tier)
-
 function toVector1D(x) {
-  if (!Array.isArray(x)) return null;
-  if (x.length === 0) return null;
+  if (!Array.isArray(x) || x.length === 0) return null;
 
-  // 1D
   if (typeof x[0] === "number") return x;
 
-  // 2D token embeddings -> promedio por dimensión
   if (Array.isArray(x[0])) {
     const tokens = x;
     const dims = tokens[0].length;
@@ -29,7 +24,6 @@ function toVector1D(x) {
 
 export default async function handler(req, res) {
   try {
-    // CORS
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     if (req.method === "OPTIONS") return res.status(200).end();
@@ -47,18 +41,17 @@ export default async function handler(req, res) {
 
     const inputs = nodes.map(n => `${n.name} | ${n.tag || ""} | ${(n.tags || []).join(" ")}`);
 
-    // HuggingFace feature-extraction endpoint
-    const r = await fetch(
-https://router.huggingface.co/hf-inference/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${HF_API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ inputs })
-      }
-    );
+    const HF_URL = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2";
+
+    // Batch: HF suele devolver [item1, item2, ...]
+    const r = await fetch(HF_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${HF_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ inputs })
+    });
 
     if (!r.ok) {
       const t = await r.text();
@@ -67,9 +60,6 @@ https://router.huggingface.co/hf-inference/pipeline/feature-extraction/sentence-
 
     const raw = await r.json();
 
-    // raw puede venir como:
-    // - [vec, vec, ...] (lo esperado)
-    // - o en casos raros, otras formas -> intentamos normalizar
     if (!Array.isArray(raw) || raw.length !== inputs.length) {
       return res.status(500).json({ error: "Unexpected HF response shape", raw });
     }
@@ -90,4 +80,3 @@ https://router.huggingface.co/hf-inference/pipeline/feature-extraction/sentence-
     return res.status(500).json({ error: "Server error", detail: String(e) });
   }
 }
-
